@@ -1,0 +1,64 @@
+name: singularity
+on: 
+  push:
+
+    # Edit the branches here if you want to change deploy behavior
+    branches:
+      - main
+      - master
+
+  # Do the builds on all pull requests (to test them)
+  pull_request: []
+
+jobs:
+  build-test-containers:
+    runs-on: ubuntu-latest
+    strategy:
+      # Keep going on other deployments if anything bloops
+      fail-fast: false
+      matrix:
+        changed_file: devtools/singularity.def
+        singularity_version:
+          - '3.8.1'
+
+    container:
+      image: quay.io/singularity/singularity:v${{ matrix.singularity_version }}
+      options: --privileged
+
+    name: check
+    steps:
+
+      - name: Check out code for the container builds
+        uses: actions/checkout@v2
+
+      - name: Continue if Singularity Recipe
+        run: |
+          # Continue if we have a changed Singularity recipe
+          if [[ "${{ matrix.changed_file }}" = *Singularity* ]]; then
+            echo "keepgoing=true" >> $GITHUB_ENV
+          fi          
+
+      - name: Build Container
+        if: ${{ env.keepgoing == 'true' }}
+        env:
+          recipe: ${{ matrix.changed_file }}
+        run: |
+         ls 
+         sudo -E singularity build maize.sif devtools/singularity.def
+         tag=$(echo "${recipe/Singularity\./}")
+         if [ "$tag" == "Singularity" ]; then
+             tag=latest
+         fi
+         # Build the container and name by tag
+         echo "Tag is $tag."
+         echo "tag=$tag" >> $GITHUB_ENV
+
+      - name: Login and Deploy Container
+        if: (github.event_name != 'pull_request')
+        env:
+          keepgoing: ${{ env.keepgoing }}
+        run: |
+            if [[ "${keepgoing}" == "true" ]]; then
+                echo ${{ secrets.GITHUB_TOKEN }} | singularity remote login -u ${{ secrets.GHCR_USERNAME }} --password-stdin oras://ghcr.io
+                singularity push maize.sif oras://ghcr.io/${GITHUB_REPOSITORY}:${tag}
+            fi
