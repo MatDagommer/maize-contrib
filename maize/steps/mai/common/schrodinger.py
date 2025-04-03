@@ -94,7 +94,7 @@ class _SchrodingerJobStatus(StrEnum):
 
 def _query_schrodinger_job(jobid: str) -> _SchrodingerJobStatus:
     """Queries the Schrodinger job server for a job"""
-    res = _simple_run(f"{os.environ['SCHRODINGER']}/jsc info {jobid}")
+    res = _simple_run(f"jsc info {jobid}")
     for line in res.stdout.decode().splitlines():
         if line.strip().startswith("Status:"):
             _, status = line.split()
@@ -149,13 +149,13 @@ def _kill_jobservers(maize_only: bool = True, server_id: str = "") -> list[int]:
 
 def _job_server_running() -> bool:
     """Returns ``True`` if the Schrodinger job server is running"""
-    res = _simple_run(f"{os.environ['SCHRODINGER']}/jsc local-server-status")
+    res = _simple_run(f"jsc local-server-status")
     return "RUNNING" in res.stdout.decode() and res.returncode == 0
 
 
 def _job_server_maize() -> bool:
     """Returns ``True`` if the Schrodinger job server was started by maize"""
-    res = _simple_run(f"{os.environ['SCHRODINGER']}/jsc local-server-dir")
+    res = _simple_run(f"jsc local-server-dir")
     return "maize-jobserver" in res.stdout.decode() and res.returncode == 0
 
 
@@ -225,7 +225,7 @@ class Schrodinger(Node, register=False):
 
     def _download_result(self, jobid: str) -> CompletedProcess[bytes]:
         """Explicitly downloads any results from a job"""
-        res = _simple_run(f"{os.environ['SCHRODINGER']}/jsc download {jobid}")
+        res = _simple_run(f"jsc download {jobid}")
         if "no more files" in (stdout := res.stdout.decode()):
             self.logger.debug("Downloader failed:\n %s", stdout)
         return res
@@ -233,7 +233,7 @@ class Schrodinger(Node, register=False):
     def _cleanup_jobserver_temp(self, log: bool = True) -> None:
         """Attempts to kill the spawned jobserver and remove all residues"""
         self._safe_log("Stopping any running jobservers...", active=log)
-        self._simple_run_verbose(f"{os.environ['SCHRODINGER']}/jsc local-server-stop", log=log)
+        self._simple_run_verbose(f"jsc local-server-stop", log=log)
         self._safe_log("Killing all associated jobservers and remnants...", active=log)
         if self._server_dir is not None:
             killed = _kill_jobservers(server_id=self._server_dir.name)
@@ -254,10 +254,10 @@ class Schrodinger(Node, register=False):
             # It is very important that this directory is globally accessible
             # so that all Schrodinger nodes can use the same jobserver
             self._safe_log(f"Setting server directory to {self._server_dir.as_posix()}")
-            self._simple_run_verbose(f"{os.environ['SCHRODINGER']}/jsc local-server-dir --set {self._server_dir.as_posix()}")
+            self._simple_run_verbose(f"jsc local-server-dir --set {self._server_dir.as_posix()}")
 
         self._safe_log("Starting the job server...")
-        res = self._simple_run_verbose(f"{os.environ['SCHRODINGER']}/jsc local-server-start")
+        res = self._simple_run_verbose(f"jsc local-server-start")
 
         # Waiting here is extremely important, as the starting command exits
         # immediately, but the server only becomes responsive later. Without
