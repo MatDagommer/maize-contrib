@@ -252,6 +252,7 @@ class Glide(Schrodinger):
             command,
             args,
             name=name,
+            verbose=True,
             validators=[FileValidator(output)],
             raise_on_failure=self.raise_on_failure.value,
         )
