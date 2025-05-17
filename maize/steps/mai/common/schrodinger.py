@@ -381,6 +381,8 @@ class Schrodinger(Node, register=False):
                 args = shlex.split(args)
             command.extend(args)
 
+        command.append("-DEBUG")
+
         def _restart(n_fail: int) -> CompletedProcess[bytes]:
             return self._run_schrodinger_job(
                 command,
