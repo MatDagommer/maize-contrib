@@ -446,7 +446,10 @@ class Schrodinger(Node, register=False):
         # Submission success, get the ID and monitor progression
         n_fails = 0
         self.logger.debug(f"result output: {result.stdout.decode().split()}")
-        _, jobid = result.stdout.decode().split()
+        if len(result.stdout.decode().split()) > 2:
+            jobid = result.stdout.decode().split()[-1]
+        else:
+            _, jobid = result.stdout.decode().split()
         self.logger.debug("Monitoring job with Schrodinger ID %s", jobid)
         while not self.signal.is_set():
             time.sleep(self.query_interval.value)
